@@ -338,34 +338,13 @@ std::vector<float> PointDetector::preprocess(const cv::Mat& image, cv::Rect2d& s
         right = static_cast<int>(std::round(dw));
     }
     
-    std::cout << "EXACT Ultralytics LetterBox:" << "\n";
-    std::cout << "  Parameters: center=" << center << ", auto=" << auto_pad << ", scale_fill=" << scale_fill << ", scaleup=" << scaleup << "\n";
-    std::cout << "  Original shape: [" << shape[0] << ", " << shape[1] << "]" << "\n";
-    std::cout << "  New shape: [" << new_shape[0] << ", " << new_shape[1] << "]" << "\n";
-    std::cout << "  Scale ratio (r): " << std::fixed << std::setprecision(16) << r << "\n";
-    std::cout << "  New unpadded: [" << new_unpad[0] << ", " << new_unpad[1] << "]" << "\n";
-    std::cout << "  dw, dh: " << std::fixed << std::setprecision(10) << dw << ", " << dh << "\n";
-    
-    // CRITICAL DEBUG: Show exact padding calculation step by step
-    std::cout << "=== PADDING CALCULATION DEBUG ===" << "\n";
-    std::cout << "  center=" << center << ", auto_pad=" << auto_pad << "\n";
-    if (center) {
-        std::cout << "  dh - 0.1 = " << std::fixed << std::setprecision(10) << (dh - 0.1) << "\n";
-        std::cout << "  dh + 0.1 = " << std::fixed << std::setprecision(10) << (dh + 0.1) << "\n";
-        std::cout << "  round(dh - 0.1) = " << std::round(dh - 0.1) << "\n";
-        std::cout << "  round(dh + 0.1) = " << std::round(dh + 0.1) << "\n";
-        std::cout << "  dw - 0.1 = " << std::fixed << std::setprecision(10) << (dw - 0.1) << "\n";
-        std::cout << "  dw + 0.1 = " << std::fixed << std::setprecision(10) << (dw + 0.1) << "\n";
-        std::cout << "  round(dw - 0.1) = " << std::round(dw - 0.1) << "\n";
-        std::cout << "  round(dw + 0.1) = " << std::round(dw + 0.1) << "\n";
+    if (config_.verbose_logging) {
+        std::cout << "LetterBox preprocessing: " << shape[1] << "x" << shape[0] 
+                  << " -> " << new_shape[1] << "x" << new_shape[0] << ", ratio=" << r << "\n";
     }
-    std::cout << "  Final padding: top=" << top << ", bottom=" << bottom << ", left=" << left << ", right=" << right << "\n";
-    std::cout << "  Image size before padding: " << img.cols << "x" << img.rows << "\n";
     
     // Apply padding with EXACT Ultralytics method
     cv::copyMakeBorder(img, img, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
-    
-    std::cout << "  Image size after initial padding: " << img.cols << "x" << img.rows << "\n";
     
     // Store original padding values for debug
     int original_top = top;
@@ -388,12 +367,6 @@ std::vector<float> PointDetector::preprocess(const cv::Mat& image, cv::Rect2d& s
         int additional_left = (new_shape[1] - img.cols) / 2;
         int additional_right = new_shape[1] - img.cols - additional_left;
         
-        std::cout << "  ADDITIONAL PADDING NEEDED (auto=False only):" << "\n";
-        std::cout << "    Target size: " << new_shape[1] << "x" << new_shape[0] << "\n";
-        std::cout << "    Current size: " << img.cols << "x" << img.rows << "\n";
-        std::cout << "    Additional: top=" << additional_top << ", bottom=" << additional_bottom 
-                  << ", left=" << additional_left << ", right=" << additional_right << "\n";
-        
         cv::copyMakeBorder(img, img, additional_top, additional_bottom, additional_left, additional_right, 
                           cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
         
@@ -401,19 +374,15 @@ std::vector<float> PointDetector::preprocess(const cv::Mat& image, cv::Rect2d& s
         left += additional_left;
         top += additional_top;
         
-        std::cout << "    Updated total padding: top=" << top << " (was " << original_top << "), left=" << left << " (was " << original_left << ")" << "\n";
-    } else {
-        std::cout << "  NO ADDITIONAL PADDING (matching Ultralytics Python behavior)" << "\n";
+        if (config_.verbose_logging) {
+            std::cout << "Additional padding applied: " << additional_top << "," << additional_left << "\n";
+        }
     }
     
-    std::cout << "=== FINAL PADDING SUMMARY ===" << "\n";
-    std::cout << "  Final image size: " << img.cols << "x" << img.rows << "\n";
-    std::cout << "  Target size: " << new_shape[1] << "x" << new_shape[0] << "\n";
-    std::cout << "  Size match: " << (img.cols == new_shape[1] && img.rows == new_shape[0] ? "YES" : "NO") << "\n";
-    std::cout << "  Final padding offsets: left=" << left << ", top=" << top << "\n";
-    std::cout << "  Scale ratio for inverse: " << std::fixed << std::setprecision(16) << r << "\n";
-    std::cout << "  Matches Python behavior: " << (auto_pad ? "YES (auto=True, variable size)" : "YES (auto=False, fixed size)") << "\n";
-    std::cout << "=================================" << "\n";
+    if (config_.verbose_logging) {
+        std::cout << "Final size: " << img.cols << "x" << img.rows 
+                  << ", padding: " << left << "," << top << ", ratio: " << r << "\n";
+    }
     
     // Store EXACT scale info for postprocessing - USE DOUBLE PRECISION
     scale_info.x = left;
@@ -445,7 +414,9 @@ std::vector<float> PointDetector::preprocess(const cv::Mat& image, cv::Rect2d& s
     int input_size = actual_height * actual_width * 3;
     std::vector<float> input_tensor_data(input_size);
     
-    std::cout << "Creating input tensor: " << actual_width << "x" << actual_height << " (size=" << input_size << ")" << "\n";
+    if (config_.verbose_logging) {
+        std::cout << "Creating input tensor: " << actual_width << "x" << actual_height << " (size=" << input_size << ")\n";
+    }
     
     // Fill tensor data in CHW format (channels first)
     for (int c = 0; c < 3; ++c) {
@@ -466,14 +437,14 @@ std::vector<PointDetectionResult> PointDetector::postprocess(const std::vector<f
                                                              const cv::Rect2d& scale_info) {
     std::vector<PointDetectionResult> results;
     
-    std::cout << "🔍 Analyzing point detection model output..." << "\n";
-    std::cout << "   Output shape: [";
-    for (size_t i = 0; i < output_shape.size(); ++i) {
-        std::cout << output_shape[i];
-        if (i < output_shape.size() - 1) std::cout << ", ";
+    if (config_.verbose_logging) {
+        std::cout << "Analyzing point detection output: shape=[";
+        for (size_t i = 0; i < output_shape.size(); ++i) {
+            std::cout << output_shape[i];
+            if (i < output_shape.size() - 1) std::cout << ",";
+        }
+        std::cout << "], size=" << output_data.size() << "\n";
     }
-    std::cout << "]" << "\n";
-    std::cout << "   Output data size: " << output_data.size() << "\n";
     
     // Use EXACT same coordinate transformation as SingleImageYolo.cpp
     double gain = std::min(static_cast<double>(processed_height_) / static_cast<double>(original_height_), 
@@ -481,10 +452,10 @@ std::vector<PointDetectionResult> PointDetector::postprocess(const std::vector<f
     double pad_w = std::round((static_cast<double>(processed_width_) - static_cast<double>(original_width_) * gain) / 2 - 0.1);
     double pad_h = std::round((static_cast<double>(processed_height_) - static_cast<double>(original_height_) * gain) / 2 - 0.1);
     
-    std::cout << "  Original size: " << original_width_ << "x" << original_height_ << "\n";
-    std::cout << "  Processed size: " << processed_width_ << "x" << processed_height_ << "\n";
-    std::cout << "  Gain: " << gain << "\n";
-    std::cout << "  Pad: " << pad_w << ", " << pad_h << "\n";
+    if (config_.verbose_logging) {
+        std::cout << "Coordinate transform: " << original_width_ << "x" << original_height_ 
+                  << " -> " << processed_width_ << "x" << processed_height_ << ", gain=" << gain << "\n";
+    }
 
     // Step 1: Apply Ultralytics NMS on raw model output first
     auto nms_output = non_max_suppression(
@@ -506,7 +477,9 @@ std::vector<PointDetectionResult> PointDetector::postprocess(const std::vector<f
     if (!nms_output.empty() && !nms_output[0].empty()) {
         const auto& detections = nms_output[0];  // First (and only) batch
         
-        std::cout << "   Processing " << detections.size() << " detections after Ultralytics NMS" << "\n";
+        if (config_.verbose_logging) {
+            std::cout << "Processing " << detections.size() << " detections after NMS\n";
+        }
         
         for (const auto& detection : detections) {
             if (detection.size() < 6) continue;  // Need at least [x1, y1, x2, y2, conf, class]
