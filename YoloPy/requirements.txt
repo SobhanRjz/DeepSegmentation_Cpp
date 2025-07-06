@@ -1,0 +1,23 @@
+# Core YOLO and Computer Vision dependencies
+ultralytics>=8.0.0
+opencv-python>=4.5.0
+numpy>=1.21.0
+pandas>=1.3.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# ONNX dependencies
+onnx>=1.12.0
+onnxruntime>=1.12.0
+# For GPU support (optional, uncomment if needed):
+# onnxruntime-gpu>=1.12.0
+
+# Additional optimization (optional)
+onnx-simplifier>=0.4.0
+
+# For better performance
+Pillow>=8.0.0
+scipy>=1.7.0
+
+# Development and testing
+pytest>=6.0.0 

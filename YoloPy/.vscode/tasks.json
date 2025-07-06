@@ -1,0 +1,188 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Single Image YOLO (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make single_image_yolo -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build single image YOLO application in debug mode with symbols"
+        },
+        {
+            "label": "Build Single Image YOLO (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make single_image_yolo -j$(nproc)",
+            "group": {
+                "kind": "build"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build single image YOLO application in release mode (optimized)"
+        },
+        {
+            "label": "Build Batch YOLO ONNX (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make batch_yolo_onnx -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build batch YOLO ONNX application in debug mode with symbols"
+        },
+        {
+            "label": "Build Batch YOLO ONNX (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make batch_yolo_onnx -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build batch YOLO ONNX application in release mode (optimized)"
+        },
+        {
+            "label": "Build Point Detector (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make point_detector -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build point detector application in debug mode with symbols"
+        },
+        {
+            "label": "Build Test OpenCV (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make test_opencv -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build OpenCV test utility in release mode (optimized)"
+        },
+        {
+            "label": "Build All Utilities (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build all executables (single_image_yolo, point_detector, batch_yolo_onnx, test_opencv) in debug mode"
+        },
+        {
+            "label": "Build All Utilities (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build all executables (single_image_yolo, point_detector, batch_yolo_onnx, test_opencv) in release mode"
+        },
+        {
+            "label": "Build Tests (Debug)",
+            "type": "shell",
+            "command": "cd tests && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS='-g -O0' .. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build YOLO tests in debug mode with symbols and no optimization"
+        },
+        {
+            "label": "Build Tests (Release)",
+            "type": "shell",
+            "command": "cd tests && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build YOLO tests in release mode (optimized)"
+        },
+        {
+            "label": "Clean All Builds",
+            "type": "shell",
+            "command": "rm -rf build/debug build/release tests/build",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "detail": "Clean all build directories (debug, release, and tests)"
+        },
+        {
+            "label": "Run CSV Comparison Test",
+            "type": "shell",
+            "command": "cd tests/build && ./yolo_tests --gtest_filter=CSVComparisonTest.*",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "dependsOn": "Build Tests (Debug)",
+            "detail": "Run only the CSV comparison tests"
+        },
+        {
+            "label": "Run All Tests",
+            "type": "shell",
+            "command": "cd tests/build && ./yolo_tests",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "dependsOn": "Build Tests (Debug)",
+            "detail": "Build and run all YOLO tests"
+        }
+    ]
+}  

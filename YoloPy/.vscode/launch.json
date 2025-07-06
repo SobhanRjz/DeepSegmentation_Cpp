@@ -1,0 +1,242 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🐍 Python: Debug Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "🐛 Single Image YOLO (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/single_image_yolo",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { "name": "LD_LIBRARY_PATH", "value": "/usr/local/lib" }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Single Image YOLO (Debug)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🚀 Single Image YOLO (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/single_image_yolo",
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { "name": "LD_LIBRARY_PATH", "value": "/usr/local/lib" }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Single Image YOLO (Release)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "🐛 Batch YOLO ONNX (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/batch_yolo_onnx",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime-linux-x64-gpu-1.22.0/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Batch YOLO ONNX (Debug)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🚀 Batch YOLO ONNX (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/batch_yolo_onnx",
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime-linux-x64-gpu-1.22.0/lib:/usr/local/lib" 
+        }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Batch YOLO ONNX (Release)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "🎯 Point Detector (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/point_detector",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime-linux-x64-gpu-1.22.0/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Point Detector (Debug)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🧪 Test OpenCV (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/test_opencv",
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { "name": "LD_LIBRARY_PATH", "value": "/usr/local/lib" }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Test OpenCV (Release)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "🧪 Run All Tests (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/build/yolo_tests",
+      "args": ["--gtest_break_on_failure", "--gtest_output=verbose"],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { "name": "LD_LIBRARY_PATH", "value": "/usr/local/lib" }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Tests (Debug)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Set print elements to unlimited",
+          "text": "set print elements 0",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "📊 CSV Comparison Test",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/build/yolo_tests",
+      "args": ["--gtest_filter=CSVComparisonTest.*", "--gtest_output=verbose"],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { "name": "LD_LIBRARY_PATH", "value": "/usr/local/lib" }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Tests (Debug)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "🏃 Run Tests (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/build/yolo_tests",
+      "args": ["--gtest_output=verbose"],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { "name": "LD_LIBRARY_PATH", "value": "/usr/local/lib" }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Tests (Release)"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "testFilter",
+      "description": "Enter test filter (e.g., CSVComparisonTest.*, PostprocessingTest.*)",
+      "default": "*",
+      "type": "promptString"
+    },
+    {
+      "id": "imagePath",
+      "description": "Enter path to image file",
+      "default": "${workspaceFolder}/test_output.jpg",
+      "type": "promptString"
+    },
+    {
+      "id": "pythonArgs",
+      "description": "Enter Python script arguments",
+      "default": "",
+      "type": "promptString"
+    }
+  ]
+}

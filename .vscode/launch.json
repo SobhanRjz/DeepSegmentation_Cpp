@@ -1,0 +1,296 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🐍 Python: Debug Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "📊 Segmentation Batch (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/segmentation_batch",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime_install/lib:${workspaceFolder}/libs/pytorch_install/lib:${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Segmentation Batch (Debug)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🚀 Segmentation Batch (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/segmentation_batch",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime_install/lib:${workspaceFolder}/libs/pytorch_install/lib:${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Segmentation Batch (Release)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "📊 Point Batch Processor (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/point_batch",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime_install/lib:${workspaceFolder}/libs/pytorch_install/lib:${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Point Batch Processor (Debug)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🚀 Point Batch Processor (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/point_batch",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime_install/lib:${workspaceFolder}/libs/pytorch_install/lib:${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Point Batch Processor (Release)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🔄 Unified Batch Processor (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/unified_batch_processor",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime_install/lib:${workspaceFolder}/libs/pytorch_install/lib:${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Unified Batch Processor (Debug)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🚀 Unified Batch Processor (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/unified_batch_processor",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/onnxruntime_install/lib:${workspaceFolder}/libs/pytorch_install/lib:${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Build Unified Batch Processor (Release)",
+      "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "🧪 Test OpenCV (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/release/test_opencv",
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Test OpenCV (Release)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "🧪 Run All Tests (Debug)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/build/yolo_tests",
+      "args": ["--gtest_break_on_failure", "--gtest_output=verbose"],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Tests (Debug)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Set print elements to unlimited",
+          "text": "set print elements 0",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "📊 CSV Comparison Test",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/build/yolo_tests",
+      "args": ["--gtest_filter=CSVComparisonTest.*", "--gtest_output=verbose"],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Tests (Debug)",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "🏃 Run Tests (Release)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/build/yolo_tests",
+      "args": ["--gtest_output=verbose"],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        { 
+          "name": "LD_LIBRARY_PATH", 
+          "value": "${workspaceFolder}/libs/opencv_install/lib:/usr/local/lib" 
+        }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "stopAtEntry": false,
+      "preLaunchTask": "Build Tests (Release)"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "testFilter",
+      "description": "Enter test filter (e.g., CSVComparisonTest.*, PostprocessingTest.*)",
+      "default": "*",
+      "type": "promptString"
+    },
+    {
+      "id": "imagePath",
+      "description": "Enter path to image file",
+      "default": "${workspaceFolder}/test_output.jpg",
+      "type": "promptString"
+    },
+    {
+      "id": "modelPath",
+      "description": "Enter path to .pt model file",
+      "default": "${workspaceFolder}/YoloModel/yolov8n.pt",
+      "type": "promptString"
+    },
+    {
+      "id": "pythonArgs",
+      "description": "Enter Python script arguments",
+      "default": "",
+      "type": "promptString"
+    }
+  ]
+}

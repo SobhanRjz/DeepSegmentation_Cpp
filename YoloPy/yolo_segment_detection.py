@@ -1,0 +1,1278 @@
+#!/usr/bin/env python3
+"""
+YOLO Segmentation Detection Script
+This script tests a YOLO segmentation model and saves results to CSV and images.
+"""
+
+from ultralytics import YOLO
+import pandas as pd
+import cv2
+import numpy as np
+import os
+import sys
+from typing import Optional, List, Tuple, Dict, Any
+import logging
+from datetime import datetime
+import colorsys
+
+# Add YoloPy directory to path to import config_reader
+yolo_py_path = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(yolo_py_path)
+
+try:
+    from config_reader import get_config
+    # Load configuration
+    config = get_config(os.path.join(yolo_py_path, 'config.json'))
+    CONF_THRESHOLD = config.confidence_threshold
+    SCORE_THRESHOLD = config.score_threshold
+    NMS_IOU_THRESHOLD = config.nms_threshold
+    INPUT_WIDTH = config.input_width
+    INPUT_HEIGHT = config.input_height
+except ImportError:
+    # Fallback values if config_reader is not available
+    CONF_THRESHOLD = 0.25
+    SCORE_THRESHOLD = 0.25
+    NMS_IOU_THRESHOLD = 0.45
+    INPUT_WIDTH = 640
+    INPUT_HEIGHT = 640
+
+
+class YOLOSegmentationDetector:
+    """
+    YOLO Segmentation Detection class with comprehensive functionality.
+    
+    This class provides segmentation detection capabilities including
+    loading models, running inference, and saving results with masks.
+    """
+    
+    def __init__(self, model_path: str = "YoloModel/yolov8m_SegmentationDetection_dynamic.pt", output_dir: str = "output"):
+        """
+        Initialize the YOLO Segmentation Detector.
+        
+        Args:
+            model_path (str): Path to the YOLO segmentation model file
+            output_dir (str): Directory to save output files
+        """
+        self.model_path = model_path
+        self.output_dir = output_dir
+        self.model = None
+        self.input_width = INPUT_WIDTH
+        self.input_height = INPUT_HEIGHT
+        
+        # Set up logging
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+        
+        # Setup directories and load model
+        self._setup_directories()
+        self.load_model()
+    
+    def _setup_directories(self) -> None:
+        """Create necessary directories if they don't exist."""
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.logger.info(f"Output directory created/verified: {self.output_dir}")
+    
+    def load_model(self) -> None:
+        """Load the YOLO segmentation model."""
+        try:
+            # Try different model paths
+            model_paths = [
+                self.model_path,
+                f"YoloModel/{os.path.basename(self.model_path)}",
+                f"../YoloModel/{os.path.basename(self.model_path)}",
+                "YoloModel/yolov8m_SegmentationDetection_dynamic.pt",
+                "YoloModel/yolov8n_player_seg_20250208.pt"
+            ]
+            
+            model = None
+            actual_model_path = None
+            
+            for path in model_paths:
+                if os.path.exists(path):
+                    print(f"✅ Found model: {path}")
+                    model = YOLO(path)
+                    actual_model_path = path
+                    break
+            
+            if model is None:
+                print(f"❌ Model not found in any of these paths:")
+                for path in model_paths:
+                    print(f"   - {path}")
+                print("Please provide a valid model path.")
+                return
+            
+            self.model = model
+            self.logger.info(f"Successfully loaded YOLO segmentation model: {actual_model_path}")
+            
+            # Check if model supports segmentation
+            if hasattr(self.model.model, 'names'):
+                self.logger.info(f"Model classes: {list(self.model.model.names.values())}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to load model {self.model_path}: {str(e)}")
+            raise
+    
+    def export_to_onnx(self, output_path: Optional[str] = None, dynamic: bool = True, 
+                       simplify: bool = False, opset: int = 11) -> str:
+        """
+        Export the YOLO model to ONNX format with dynamic input dimensions.
+        
+        Args:
+            output_path (Optional[str]): Path for the output ONNX file. If None, uses model name with .onnx extension
+            dynamic (bool): Whether to use dynamic input dimensions (batch, height, width)
+            simplify (bool): Whether to simplify the ONNX model
+            opset (int): ONNX opset version to use
+            
+        Returns:
+            str: Path to the exported ONNX file
+        """
+        if not self.model:
+            raise ValueError("Model not loaded. Cannot export to ONNX.")
+        
+        try:
+            # Generate output path if not provided
+            if output_path is None:
+                model_name = os.path.splitext(os.path.basename(self.model_path))[0]
+                output_path = os.path.join(self.output_dir, f"{model_name}.onnx")
+            
+            # Ensure output directory exists
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            self.logger.info(f"Starting ONNX export to: {output_path}")
+            self.logger.info(f"Dynamic input: {dynamic}, Simplify: {simplify}, Opset: {opset}")
+            
+            # Export model to ONNX with dynamic dimensions
+            # The ultralytics YOLO export method handles dynamic shapes automatically when dynamic=True
+            success = self.model.export(
+                format='onnx',
+                dynamic=dynamic,
+                imgsz=(INPUT_WIDTH, INPUT_HEIGHT),
+                opset=opset,
+                verbose=True
+            )
+            # The export method returns the path to the exported file
+            if success:
+                # Check if the file was created
+                exported_files = []
+                model_dir = os.path.dirname(self.model_path)
+                model_name = os.path.splitext(os.path.basename(self.model_path))[0]
+                
+                # Look for the exported ONNX file (ultralytics creates it in the model directory)
+                potential_onnx_path = os.path.join(model_dir, f"{model_name}.onnx")
+                
+                if os.path.exists(potential_onnx_path):
+                    # Move the file to our desired output path if different
+                    if potential_onnx_path != output_path:
+                        import shutil
+                        shutil.move(potential_onnx_path, output_path)
+                    
+                    self.logger.info(f"Successfully exported YOLO model to ONNX: {output_path}")
+                    
+                    # Log file size
+                    file_size = os.path.getsize(output_path) / (1024 * 1024)  # MB
+                    self.logger.info(f"ONNX file size: {file_size:.2f} MB")
+                    
+                    return output_path
+                else:
+                    # If the file wasn't found in expected location, check if export returned a path
+                    if isinstance(success, str) and os.path.exists(success):
+                        if success != output_path:
+                            import shutil
+                            shutil.move(success, output_path)
+                        self.logger.info(f"Successfully exported YOLO model to ONNX: {output_path}")
+                        return output_path
+                    else:
+                        raise FileNotFoundError("ONNX export completed but output file not found")
+            else:
+                raise RuntimeError("ONNX export failed")
+                
+        except Exception as e:
+            self.logger.error(f"Failed to export model to ONNX: {str(e)}")
+            raise
+    
+    def export_to_onnx_with_custom_shapes(self, output_path: Optional[str] = None, 
+                                         batch_size: str = "1", height: str = "640", 
+                                         width: str = "640", simplify: bool = True, 
+                                         opset: int = 11) -> str:
+        """
+        Export the YOLO model to ONNX format with custom dynamic axis names.
+        
+        Args:
+            output_path (Optional[str]): Path for the output ONNX file
+            batch_size (str): Batch size dimension (use "batch" for dynamic, or specific number)
+            height (str): Height dimension (use "height" for dynamic, or specific number)  
+            width (str): Width dimension (use "width" for dynamic, or specific number)
+            simplify (bool): Whether to simplify the ONNX model
+            opset (int): ONNX opset version to use
+            
+        Returns:
+            str: Path to the exported ONNX file
+        """
+        if not self.model:
+            raise ValueError("Model not loaded. Cannot export to ONNX.")
+        
+        try:
+            # Generate output path if not provided
+            if output_path is None:
+                model_name = os.path.splitext(os.path.basename(self.model_path))[0]
+                output_path = os.path.join(self.output_dir, f"{model_name}_custom_dynamic.onnx")
+            
+            # Ensure output directory exists
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            self.logger.info(f"Starting custom ONNX export to: {output_path}")
+            self.logger.info(f"Batch: {batch_size}, Height: {height}, Width: {width}")
+            
+            # For custom dynamic shapes, we need to use the dynamic=True parameter
+            # and let ultralytics handle the dynamic axis configuration
+            success = self.model.export(
+                format='onnx',
+                dynamic=True,  # Enable dynamic shapes
+                simplify=simplify,
+                opset=opset,
+                verbose=True
+            )
+            
+            # Handle the exported file similar to the previous method
+            if success:
+                model_dir = os.path.dirname(self.model_path)
+                model_name = os.path.splitext(os.path.basename(self.model_path))[0]
+                potential_onnx_path = os.path.join(model_dir, f"{model_name}.onnx")
+                
+                if os.path.exists(potential_onnx_path):
+                    if potential_onnx_path != output_path:
+                        import shutil
+                        shutil.move(potential_onnx_path, output_path)
+                    
+                    self.logger.info(f"Successfully exported YOLO model with custom dynamic shapes: {output_path}")
+                    
+                    # Log file size
+                    file_size = os.path.getsize(output_path) / (1024 * 1024)  # MB
+                    self.logger.info(f"ONNX file size: {file_size:.2f} MB")
+                    
+                    return output_path
+                else:
+                    if isinstance(success, str) and os.path.exists(success):
+                        if success != output_path:
+                            import shutil
+                            shutil.move(success, output_path)
+                        self.logger.info(f"Successfully exported YOLO model with custom dynamic shapes: {output_path}")
+                        return output_path
+                    else:
+                        raise FileNotFoundError("ONNX export completed but output file not found")
+            else:
+                raise RuntimeError("ONNX export failed")
+                
+        except Exception as e:
+            self.logger.error(f"Failed to export model to ONNX with custom shapes: {str(e)}")
+            raise
+    
+    def detect_and_segment(self, image_path: str, conf: float = CONF_THRESHOLD) -> List:
+        """
+        Run segmentation detection on an image.
+        
+        Args:
+            image_path (str): Path to the image file
+            conf (float): Confidence threshold for detections
+            
+        Returns:
+            List: Detection and segmentation results from YOLO
+        """
+        if not self.model:
+            raise ValueError("Model not loaded")
+        
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+        
+        # Get image dimensions
+        import cv2
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image: {image_path}")
+        
+        INPUT_HEIGHT, INPUT_WIDTH = image.shape[:2]
+        self.logger.info(f"Image dimensions: {INPUT_HEIGHT}x{INPUT_WIDTH}")
+        try:
+            results = self.model(
+                image_path, 
+                conf=conf, 
+                iou=NMS_IOU_THRESHOLD, 
+                imgsz=(1280, 1280),
+                save=False,
+                verbose=False
+            )
+            self.logger.info(f"Segmentation detection completed for: {image_path}")
+            return results
+        except Exception as e:
+            self.logger.error(f"Detection failed: {str(e)}")
+            raise
+    
+    def save_results_to_csv(self, results: List, image_name: str, output_filename: str = "det_results.csv") -> str:
+        """
+        Save segmentation detection results to CSV file.
+        
+        Args:
+            results (List): YOLO segmentation detection results
+            image_name (str): Name of the processed image
+            output_filename (str): Name of the output CSV file
+            
+        Returns:
+            str: Path to the saved CSV file
+        """
+        if not results or len(results) == 0:
+            self.logger.warning("No results to save")
+            return ""
+        
+        try:
+            result = results[0]
+            csv_data = []
+            
+            # Process detection boxes if available
+            if hasattr(result, 'boxes') and result.boxes is not None:
+                boxes = result.boxes.data.cpu().numpy()
+                
+                for i, box in enumerate(boxes):
+                    x1, y1, x2, y2, conf, class_id = box
+                    
+                    # Get class name
+                    class_name = self.model.names[int(class_id)] if hasattr(self.model, 'names') else f"class_{int(class_id)}"
+                    
+                    # Calculate box center and dimensions
+                    center_x = (x1 + x2) / 2
+                    center_y = (y1 + y2) / 2
+                    width = x2 - x1
+                    height = y2 - y1
+                    area = width * height
+                    
+                    csv_data.append({
+                        'box_area': float(area),
+                        'x1': float(x1),
+                        'y1': float(y1),
+                        'x2': float(x2),
+                        'y2': float(y2),
+                        'class_id': int(class_id),
+                        'class_name': class_name,
+                        'confidence': float(conf),
+                        'center_x': float(center_x),
+                        'center_y': float(center_y),
+                        'width': float(width),
+                        'height': float(height),
+                        'has_mask': hasattr(result, 'masks') and result.masks is not None
+                    })
+            
+            # Process segmentation masks if available
+            if hasattr(result, 'masks') and result.masks is not None:
+                masks = result.masks.data.cpu().numpy()
+                
+                for i, mask in enumerate(masks):
+                    if i < len(csv_data):
+                        # Calculate mask area
+                        mask_area = np.sum(mask > 0.5)
+                        csv_data[i]['mask_area'] = float(mask_area)
+                        csv_data[i]['mask_shape'] = f"{mask.shape[0]}x{mask.shape[1]}"
+            
+            # Create DataFrame and save to CSV
+            if csv_data:
+                df = pd.DataFrame(csv_data)
+                csv_path = os.path.join(self.output_dir, output_filename)
+                df.to_csv(csv_path, index=False)
+                self.logger.info(f"Results saved to CSV: {csv_path}")
+                self.logger.info(f"Total detections: {len(csv_data)}")
+                return csv_path
+            else:
+                self.logger.warning("No detection data to save")
+                return ""
+                
+        except Exception as e:
+            self.logger.error(f"Failed to save results to CSV: {str(e)}")
+            raise
+    
+    def _generate_smooth_colors(self, num_colors: int) -> List[Tuple[int, int, int]]:
+        """
+        Generate smooth, distinct colors using HSV color space.
+        
+        Args:
+            num_colors (int): Number of colors to generate
+            
+        Returns:
+            List[Tuple[int, int, int]]: List of BGR color tuples
+        """
+        colors = []
+        for i in range(num_colors):
+            # Generate evenly spaced hues
+            hue = i / num_colors
+            # Use high saturation and value for vibrant colors
+            saturation = 0.8 + (i % 3) * 0.1  # Vary saturation slightly
+            value = 0.9 + (i % 2) * 0.1       # Vary brightness slightly
+            
+            # Convert HSV to RGB
+            rgb = colorsys.hsv_to_rgb(hue, saturation, value)
+            # Convert to BGR for OpenCV (and scale to 0-255)
+            bgr = (int(rgb[2] * 255), int(rgb[1] * 255), int(rgb[0] * 255))
+            colors.append(bgr)
+        
+        return colors
+
+    def save_all_masks_combined(self, results: List, original_image_path: str, 
+                               output_filename: str = "det_all_masks_combined.jpg",
+                               alpha: float = 0.6) -> str:
+        """
+        Save all segmentation masks combined in one picture with smooth color detection.
+        
+        Args:
+            results (List): YOLO segmentation detection results
+            original_image_path (str): Path to the original image
+            output_filename (str): Name of the output image file
+            alpha (float): Transparency level for mask overlay (0.0 to 1.0)
+            
+        Returns:
+            str: Path to the saved combined masks image
+        """
+        if not results or len(results) == 0:
+            self.logger.warning("No results to create combined masks")
+            return ""
+        
+        try:
+            # Load original image
+            image = cv2.imread(original_image_path)
+            if image is None:
+                raise ValueError(f"Could not load image: {original_image_path}")
+            
+            result = results[0]
+            
+            if hasattr(result, 'masks') and result.masks is not None:
+                masks = result.masks.data.cpu().numpy()
+                num_masks = len(masks)
+                
+                if num_masks == 0:
+                    self.logger.warning("No masks found in results")
+                    return ""
+                
+                # Generate smooth colors for all masks
+                smooth_colors = self._generate_smooth_colors(num_masks)
+                
+                # Create a combined mask overlay
+                overlay = np.zeros_like(image, dtype=np.float32)
+                
+                for i, mask in enumerate(masks):
+                    # Resize mask to match image dimensions
+                    mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))
+                    
+                    # Apply Gaussian blur for smoother edges
+                    mask_smooth = cv2.GaussianBlur(mask_resized, (5, 5), 0)
+                    
+                    # Create colored mask with smooth color
+                    color = smooth_colors[i]
+                    
+                    # Create mask for this detection
+                    mask_indices = mask_smooth > 0.5
+                    overlay[mask_indices] = color
+                
+                # Convert overlay to proper format
+                overlay = overlay.astype(np.uint8)
+                
+                # Blend the overlay with the original image
+                result_image = cv2.addWeighted(image, 1 - alpha, overlay, alpha, 0)
+                
+                # Add contours for better visualization
+                for i, mask in enumerate(masks):
+                    mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))
+                    mask_binary = (mask_resized > 0.5).astype(np.uint8)
+                    
+                    # Find contours
+                    contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    # Draw contours with the same smooth color
+                    color = smooth_colors[i]
+                    cv2.drawContours(result_image, contours, -1, color, 2)
+                
+                # Save combined masks image
+                output_path = os.path.join(self.output_dir, output_filename)
+                cv2.imwrite(output_path, result_image)
+                self.logger.info(f"Combined masks image saved to: {output_path}")
+                self.logger.info(f"Combined {num_masks} masks with smooth colors")
+                return output_path
+            else:
+                self.logger.warning("No masks found in results")
+                return ""
+                
+        except Exception as e:
+            self.logger.error(f"Failed to save combined masks image: {str(e)}")
+            raise
+
+    def save_annotated_image(self, results: List, original_image_path: str, 
+                           output_filename: str = "det_annotated.jpg") -> str:
+        """
+        Save annotated image with detection boxes and segmentation masks using smooth colors.
+        
+        Args:
+            results (List): YOLO segmentation detection results
+            original_image_path (str): Path to the original image
+            output_filename (str): Name of the output image file
+            
+        Returns:
+            str: Path to the saved annotated image
+        """
+        if not results or len(results) == 0:
+            self.logger.warning("No results to annotate")
+            return ""
+        
+        try:
+            # Load original image
+            image = cv2.imread(original_image_path)
+            if image is None:
+                raise ValueError(f"Could not load image: {original_image_path}")
+            
+            result = results[0]
+            
+            # Draw segmentation masks if available with smooth colors
+            if hasattr(result, 'masks') and result.masks is not None:
+                masks = result.masks.data.cpu().numpy()
+                num_masks = len(masks)
+                
+                # Generate smooth colors for all masks
+                smooth_colors = self._generate_smooth_colors(num_masks)
+                
+                for i, mask in enumerate(masks):
+                    # Resize mask to match image dimensions
+                    mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))
+                    
+                    # Apply slight blur for smoother edges
+                    mask_smooth = cv2.GaussianBlur(mask_resized, (3, 3), 0)
+                    
+                    # Create colored mask with smooth color
+                    color = smooth_colors[i]
+                    colored_mask = np.zeros_like(image)
+                    colored_mask[mask_smooth > 0.5] = color
+                    
+                    # Blend mask with image
+                    image = cv2.addWeighted(image, 0.7, colored_mask, 0.3, 0)
+            
+            # Draw bounding boxes if available
+            if hasattr(result, 'boxes') and result.boxes is not None:
+                boxes = result.boxes.data.cpu().numpy()
+                
+                # Generate smooth colors for boxes (matching masks if available)
+                num_boxes = len(boxes)
+                if hasattr(result, 'masks') and result.masks is not None:
+                    box_colors = self._generate_smooth_colors(num_boxes)
+                else:
+                    box_colors = self._generate_smooth_colors(num_boxes)
+                
+                for i, box in enumerate(boxes):
+                    x1, y1, x2, y2, conf, class_id = box
+                    
+                    # Get class name
+                    class_name = self.model.names[int(class_id)] if hasattr(self.model, 'names') else f"class_{int(class_id)}"
+                    
+                    # Use smooth color for bounding box
+                    box_color = box_colors[i] if i < len(box_colors) else (0, 255, 0)
+                    
+                    # Draw bounding box
+                    cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), box_color, 2)
+                    
+                    # Draw label with matching color background
+                    label = f"{class_name}: {conf:.2f}"
+                    label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+                    cv2.rectangle(image, (int(x1), int(y1) - label_size[1] - 10), 
+                                (int(x1) + label_size[0], int(y1)), box_color, -1)
+                    cv2.putText(image, label, (int(x1), int(y1) - 5), 
+                              cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            
+            # Save annotated image
+            output_path = os.path.join(self.output_dir, output_filename)
+            cv2.imwrite(output_path, image)
+            self.logger.info(f"Annotated image saved to: {output_path}")
+            return output_path
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save annotated image: {str(e)}")
+            raise
+    
+    def save_mask_images(self, results: List, output_prefix: str = "det_mask") -> List[str]:
+        """
+        Save individual segmentation masks as separate images.
+        
+        Args:
+            results (List): YOLO segmentation detection results
+            output_prefix (str): Prefix for mask image filenames
+            
+        Returns:
+            List[str]: Paths to saved mask images
+        """
+        if not results or len(results) == 0:
+            self.logger.warning("No results to save masks")
+            return []
+        
+        try:
+            result = results[0]
+            saved_paths = []
+            
+            if hasattr(result, 'masks') and result.masks is not None:
+                masks = result.masks.data.cpu().numpy()
+                
+                for i, mask in enumerate(masks):
+                    # Convert mask to 8-bit image
+                    mask_img = (mask * 255).astype(np.uint8)
+                    
+                    # Save mask image
+                    mask_filename = f"{output_prefix}_{i:03d}.png"
+                    mask_path = os.path.join(self.output_dir, mask_filename)
+                    cv2.imwrite(mask_path, mask_img)
+                    saved_paths.append(mask_path)
+                
+                self.logger.info(f"Saved {len(saved_paths)} mask images")
+            else:
+                self.logger.warning("No masks found in results")
+            
+            return saved_paths
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save mask images: {str(e)}")
+            raise
+    
+    def save_masks_on_original(self, results: List, original_image_path: str, 
+                              output_filename: str = "masked_image.jpg",
+                              alpha: float = 0.4) -> str:
+        """
+        Save the original image with all segmentation masks overlaid using smooth colors.
+        This creates only one output file - the original image with colored masks.
+        
+        Args:
+            results (List): YOLO segmentation detection results
+            original_image_path (str): Path to the original image
+            output_filename (str): Name of the output image file
+            alpha (float): Transparency level for mask overlay (0.0 to 1.0)
+            
+        Returns:
+            str: Path to the saved masked image
+        """
+        if not results or len(results) == 0:
+            self.logger.warning("No results to overlay masks")
+            return ""
+        
+        try:
+            # Load original image
+            image = cv2.imread(original_image_path)
+            if image is None:
+                raise ValueError(f"Could not load image: {original_image_path}")
+            
+            result = results[0]
+            
+            if hasattr(result, 'masks') and result.masks is not None:
+                masks = result.masks.data.cpu().numpy()
+                num_masks = len(masks)
+                
+                if num_masks == 0:
+                    self.logger.warning("No masks found in results")
+                    # Save original image as is
+                    output_path = os.path.join(self.output_dir, output_filename)
+                    cv2.imwrite(output_path, image)
+                    return output_path
+                
+                # Generate smooth colors for all masks
+                smooth_colors = self._generate_smooth_colors(num_masks)
+                
+                # Create overlay for all masks
+                overlay = np.zeros_like(image, dtype=np.float32)
+                
+                for i, mask in enumerate(masks):
+                    # Resize mask to match image dimensions
+                    mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))
+                    
+                    # Apply Gaussian blur for smoother edges
+                    mask_smooth = cv2.GaussianBlur(mask_resized, (5, 5), 0)
+                    
+                    # Create colored mask with smooth color
+                    color = smooth_colors[i]
+                    
+                    # Apply color to mask areas
+                    mask_indices = mask_smooth > 0.5
+                    overlay[mask_indices] = color
+                
+                # Convert overlay to proper format
+                overlay = overlay.astype(np.uint8)
+                
+                # Blend the overlay with the original image
+                result_image = cv2.addWeighted(image, 1 - alpha, overlay, alpha, 0)
+                
+                # Add subtle contours for better definition (optional)
+                for i, mask in enumerate(masks):
+                    mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))
+                    mask_binary = (mask_resized > 0.5).astype(np.uint8)
+                    
+                    # Find contours
+                    contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    # Draw thin contours with the same smooth color
+                    color = smooth_colors[i]
+                    cv2.drawContours(result_image, contours, -1, color, 1)
+                
+                # Save the final masked image
+                output_path = os.path.join(self.output_dir, output_filename)
+                cv2.imwrite(output_path, result_image)
+                self.logger.info(f"Masked image saved to: {output_path}")
+                self.logger.info(f"Applied {num_masks} masks with smooth colors to original image")
+                return output_path
+            else:
+                self.logger.warning("No masks found in results - saving original image")
+                # Save original image as is
+                output_path = os.path.join(self.output_dir, output_filename)
+                cv2.imwrite(output_path, image)
+                return output_path
+                
+        except Exception as e:
+            self.logger.error(f"Failed to save masked image: {str(e)}")
+            raise
+
+    def process_image_simple(self, image_path: str, conf: float = CONF_THRESHOLD) -> Dict[str, Any]:
+        """
+        Process an image with segmentation detection and save only one output file:
+        the original image with masks overlaid.
+        
+        Args:
+            image_path (str): Path to the image file
+            conf (float): Confidence threshold for detections
+            
+        Returns:
+            Dict[str, Any]: Dictionary containing path to saved file and detection info
+        """
+        self.logger.info(f"Processing image: {image_path}")
+        
+        # Get image name for output files
+        image_name = os.path.basename(image_path)
+        base_name = os.path.splitext(image_name)[0]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Run detection
+        results = self.detect_and_segment(image_path, conf)
+        
+        output_info = {
+            'image_path': image_path,
+            'image_name': image_name,
+            'timestamp': timestamp,
+            'detection_count': 0,
+            'masked_image_path': '',
+            'csv_path': ''
+        }
+        
+        if results and len(results) > 0:
+            result = results[0]
+            
+            # Count detections
+            if hasattr(result, 'masks') and result.masks is not None:
+                output_info['detection_count'] = len(result.masks)
+            elif hasattr(result, 'boxes') and result.boxes is not None:
+                output_info['detection_count'] = len(result.boxes)
+            
+            # Save CSV results
+            csv_filename = f"{base_name}_SegmentationDetection_py.csv"
+            output_info['csv_path'] = self.save_results_to_csv(results, image_name, csv_filename)
+            
+            # Save original image with masks overlaid
+            masked_filename = f"{base_name}_masked_{timestamp}.jpg"
+            output_info['masked_image_path'] = self.save_masks_on_original(results, image_path, masked_filename)
+        else:
+            # No detections found - save original image and empty CSV
+            masked_filename = f"{base_name}_no_detections_{timestamp}.jpg"
+            image = cv2.imread(image_path)
+            if image is not None:
+                output_path = os.path.join(self.output_dir, masked_filename)
+                cv2.imwrite(output_path, image)
+                output_info['masked_image_path'] = output_path
+            
+            # Create empty CSV for no detections
+            csv_filename = f"{base_name}_no_detections_{timestamp}.csv"
+            csv_path = os.path.join(self.output_dir, csv_filename)
+            empty_df = pd.DataFrame(columns=[
+                'image_name', 'detection_id', 'class_id', 'class_name', 'confidence',
+                'x1', 'y1', 'x2', 'y2', 'center_x', 'center_y', 'width', 'height',
+                'box_area', 'has_mask', 'mask_area', 'mask_shape'
+            ])
+    def process_batch_images_native(self, image_paths: List[str], conf: float = CONF_THRESHOLD, batch_size: int = 16) -> Dict[str, Any]:
+        """
+        Process multiple images using YOLO's native batch processing for maximum efficiency.
+        
+        Args:
+            image_paths (List[str]): List of image file paths
+            conf (float): Confidence threshold for detections
+            batch_size (int): Number of images to process in each batch
+            
+        Returns:
+            Dict[str, Any]: Dictionary containing batch processing results and metrics
+        """
+        self.logger.info(f"Starting YOLO native batch processing of {len(image_paths)} images")
+        self.logger.info(f"Batch size: {batch_size}, Confidence: {conf}")
+        
+        batch_results = {
+            'total_images': len(image_paths),
+            'processed_images': 0,
+            'total_detections': 0,
+            'individual_results': [],
+            'timing_metrics': {
+                'total_time': 0.0,
+                'inference_time': 0.0,
+                'postprocess_time': 0.0,
+                'total_fps': 0.0,
+                'batch_fps': 0.0,
+                'batch_times': [],
+                'batch_sizes': []
+            },
+            'failed_images': []
+        }
+        
+        import time
+        total_start_time = time.time()
+        
+        # Process images in batches using YOLO's native batch processing
+        for i in range(0, len(image_paths), batch_size):
+            batch_paths = image_paths[i:i + batch_size]
+            current_batch_size = len(batch_paths)
+            
+            self.logger.info(f"\n{'='*70}")
+            self.logger.info(f"🚀 Processing batch {i//batch_size + 1}: {current_batch_size} images")
+            self.logger.info(f"Images {i+1} to {i+current_batch_size} of {len(image_paths)}")
+            self.logger.info(f"{'='*70}")
+            
+            try:
+                # Time the batch inference
+                batch_start_time = time.time()
+                
+                # YOLO's native batch processing - pass multiple images at once
+                batch_inference_start = time.time()
+                results = self.model(
+                    batch_paths,  # Pass list of image paths for batch processing
+                    conf=conf,
+                    iou=NMS_IOU_THRESHOLD,
+                    imgsz=(1280, 1280),
+                    save=False,
+                    verbose=False
+                )
+                batch_inference_end = time.time()
+                
+                inference_time = batch_inference_end - batch_inference_start
+                
+                # Process results for each image in the batch
+                postprocess_start = time.time()
+                for j, (image_path, result) in enumerate(zip(batch_paths, results)):
+                    try:
+                        image_name = os.path.basename(image_path)
+                        base_name = os.path.splitext(image_name)[0]
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        
+                        detection_count = 0
+                        if hasattr(result, 'masks') and result.masks is not None:
+                            detection_count = len(result.masks)
+                        elif hasattr(result, 'boxes') and result.boxes is not None:
+                            detection_count = len(result.boxes)
+                        
+                        # Save CSV results
+                        csv_filename = f"{base_name}_batch_{i+j+1}_SegmentationDetection_py.csv"
+                        csv_path = self.save_results_to_csv([result], image_name, csv_filename)
+                        
+                        # Save masked image
+                        masked_filename = f"{base_name}_batch_{i+j+1}_masked_{timestamp}.jpg"
+                        masked_path = self.save_masks_on_original([result], image_path, masked_filename)
+                        
+                        # Store individual result
+                        individual_result = {
+                            'image_path': image_path,
+                            'image_name': image_name,
+                            'timestamp': timestamp,
+                            'detection_count': detection_count,
+                            'masked_image_path': masked_path,
+                            'csv_path': csv_path,
+                            'batch_number': i//batch_size + 1,
+                            'image_in_batch': j + 1
+                        }
+                        
+                        batch_results['individual_results'].append(individual_result)
+                        batch_results['processed_images'] += 1
+                        batch_results['total_detections'] += detection_count
+                        
+                        self.logger.info(f"   ✅ Image {i+j+1}: {detection_count} detections")
+                        
+                    except Exception as e:
+                        self.logger.error(f"   ❌ Failed to process image {i+j+1}: {str(e)}")
+                        batch_results['failed_images'].append({
+                            'image_path': image_path,
+                            'error': str(e),
+                            'batch_number': i//batch_size + 1
+                        })
+                
+                postprocess_end = time.time()
+                batch_end_time = time.time()
+                
+                # Calculate batch timing metrics
+                total_batch_time = batch_end_time - batch_start_time
+                postprocess_time = postprocess_end - postprocess_start
+                batch_fps = current_batch_size / total_batch_time
+                
+                batch_results['timing_metrics']['batch_times'].append(total_batch_time)
+                batch_results['timing_metrics']['batch_sizes'].append(current_batch_size)
+                
+                # Log batch performance
+                self.logger.info(f"\n📊 Batch {i//batch_size + 1} Performance:")
+                self.logger.info(f"   Batch size: {current_batch_size} images")
+                self.logger.info(f"   Inference time: {inference_time:.4f} seconds")
+                self.logger.info(f"   Postprocessing time: {postprocess_time:.4f} seconds")
+                self.logger.info(f"   Total batch time: {total_batch_time:.4f} seconds")
+                self.logger.info(f"   Batch FPS: {batch_fps:.2f} images/second")
+                self.logger.info(f"   Avg per image: {total_batch_time/current_batch_size:.4f} seconds")
+                self.logger.info(f"   Detections in batch: {sum(r['detection_count'] for r in batch_results['individual_results'][-current_batch_size:])}")
+                
+            except Exception as e:
+                self.logger.error(f"❌ Failed to process batch {i//batch_size + 1}: {str(e)}")
+                for path in batch_paths:
+                    batch_results['failed_images'].append({
+                        'image_path': path,
+                        'error': str(e),
+                        'batch_number': i//batch_size + 1
+                    })
+        
+        total_end_time = time.time()
+        total_processing_time = total_end_time - total_start_time
+        
+        # Calculate final metrics
+        if batch_results['processed_images'] > 0:
+            batch_results['timing_metrics']['total_time'] = total_processing_time
+            batch_results['timing_metrics']['total_fps'] = batch_results['processed_images'] / total_processing_time
+            
+            # Calculate average batch performance
+            if batch_results['timing_metrics']['batch_times']:
+                avg_batch_time = sum(batch_results['timing_metrics']['batch_times']) / len(batch_results['timing_metrics']['batch_times'])
+                avg_batch_size = sum(batch_results['timing_metrics']['batch_sizes']) / len(batch_results['timing_metrics']['batch_sizes'])
+                batch_results['timing_metrics']['batch_fps'] = avg_batch_size / avg_batch_time
+        
+        # Print comprehensive final summary
+        self.logger.info(f"\n{'='*80}")
+        self.logger.info(f"🏁 YOLO NATIVE BATCH PROCESSING COMPLETE!")
+        self.logger.info(f"{'='*80}")
+        self.logger.info(f"📊 FINAL BATCH METRICS:")
+        self.logger.info(f"   Total images: {batch_results['total_images']}")
+        self.logger.info(f"   Successfully processed: {batch_results['processed_images']}")
+        self.logger.info(f"   Failed images: {len(batch_results['failed_images'])}")
+        self.logger.info(f"   Total detections: {batch_results['total_detections']}")
+        self.logger.info(f"   Batch size used: {batch_size}")
+        self.logger.info(f"   Number of batches: {len(batch_results['timing_metrics']['batch_times'])}")
+        self.logger.info(f"   Total processing time: {total_processing_time:.4f} seconds")
+        self.logger.info(f"   Overall FPS: {batch_results['timing_metrics']['total_fps']:.2f}")
+        self.logger.info(f"   Average batch FPS: {batch_results['timing_metrics']['batch_fps']:.2f}")
+        self.logger.info(f"   Throughput: {batch_results['processed_images'] * 60.0 / total_processing_time:.1f} images/minute")
+        
+        if batch_results['timing_metrics']['batch_times']:
+            import statistics
+            times = batch_results['timing_metrics']['batch_times']
+            self.logger.info(f"\n⏱️  BATCH TIMING STATISTICS:")
+            self.logger.info(f"   Min batch time: {min(times):.4f} seconds")
+            self.logger.info(f"   Max batch time: {max(times):.4f} seconds")
+            self.logger.info(f"   Median batch time: {statistics.median(times):.4f} seconds")
+            self.logger.info(f"   Avg batch time: {statistics.mean(times):.4f} seconds")
+            if len(times) > 1:
+                self.logger.info(f"   Std dev batch time: {statistics.stdev(times):.4f} seconds")
+        
+        self.logger.info(f"{'='*80}")
+        
+        return batch_results
+
+    def create_test_image_list(self, base_image_path: str, count: int = 50) -> List[str]:
+        """
+        Create a list of test images by repeating the base image.
+        
+        Args:
+            base_image_path (str): Path to the base test image
+            count (int): Number of test images to create in the list
+            
+        Returns:
+            List[str]: List of image paths for batch processing
+        """
+        if not os.path.exists(base_image_path):
+            raise FileNotFoundError(f"Base test image not found: {base_image_path}")
+        
+        # Create list by repeating the same image
+        image_list = [base_image_path] * count
+        
+        self.logger.info(f"Created test image list with {count} copies of: {base_image_path}")
+        return image_list
+
+
+def export_yolo_to_onnx(model_path: str, output_path: Optional[str] = None, 
+                       dynamic: bool = True, simplify: bool = False, opset: int = 11) -> str:
+    """
+    Standalone function to export YOLO model to ONNX format with dynamic input dimensions.
+    
+    Args:
+        model_path (str): Path to the YOLO model file (.pt)
+        output_path (Optional[str]): Path for the output ONNX file. If None, uses model name with .onnx extension
+        dynamic (bool): Whether to use dynamic input dimensions (batch, height, width)
+        simplify (bool): Whether to simplify the ONNX model
+        opset (int): ONNX opset version to use
+        
+    Returns:
+        str: Path to the exported ONNX file
+        
+    Example:
+        # Export with dynamic dimensions (recommended)
+        onnx_path = export_yolo_to_onnx("model.pt", dynamic=True)
+        
+        # Export with specific output path
+        onnx_path = export_yolo_to_onnx("model.pt", "my_model_dynamic.onnx", dynamic=True)
+    """
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    
+    # Load the model
+    model = YOLO(model_path)
+    
+    # Generate output path if not provided
+    if output_path is None:
+        model_name = os.path.splitext(os.path.basename(model_path))[0]
+        model_dir = os.path.dirname(model_path)
+        output_path = os.path.join(model_dir, f"{model_name}_dynamic.onnx")
+    
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    print(f"Starting ONNX export...")
+    print(f"Model: {model_path}")
+    print(f"Output: {output_path}")
+    print(f"Dynamic input: {dynamic}")
+    print(f"Simplify: {simplify}")
+    print(f"Opset: {opset}")
+    
+    try:
+        # Export model to ONNX with dynamic=False for better C++ compatibility
+        print(f"🔄 Exporting model to ONNX format...")
+        print(f"   Model: {model_name}")
+        print(f"   Input size: {INPUT_WIDTH}x{INPUT_HEIGHT}")
+        print(f"   Dynamic shapes: False (for C++ compatibility)")
+        
+        success = model.export(
+            format="onnx",
+            imgsz=(INPUT_HEIGHT, INPUT_WIDTH),
+            dynamic=False,  # Set to False for C++ compatibility
+            simplify=True,
+            opset=12,
+            verbose=True
+        )
+        
+        if success:
+            print(f"✅ Model exported successfully to: {output_path}")
+            
+            # Test the exported model to verify it works
+            print(f"🔍 Testing exported ONNX model...")
+            import onnx
+            import onnxruntime as ort
+            
+            # Load and verify the ONNX model
+            onnx_model = onnx.load(output_path)
+            onnx.checker.check_model(onnx_model)
+            print(f"✅ ONNX model structure is valid")
+            
+            # Test inference with ONNXRuntime
+            session = ort.InferenceSession(output_path)
+            
+            # Get input/output info
+            input_info = session.get_inputs()[0]
+            output_info = session.get_outputs()
+            
+            print(f"📊 ONNX Model Information:")
+            print(f"   Input name: {input_info.name}")
+            print(f"   Input shape: {input_info.shape}")
+            print(f"   Input type: {input_info.type}")
+            
+            for i, output in enumerate(output_info):
+                print(f"   Output {i} name: {output.name}")
+                print(f"   Output {i} shape: {output.shape}")
+                print(f"   Output {i} type: {output.type}")
+            
+            # Test with dummy input
+            import numpy as np
+            dummy_input = np.random.randn(1, 3, INPUT_HEIGHT, INPUT_WIDTH).astype(np.float32)
+            outputs = session.run(None, {input_info.name: dummy_input})
+            
+            print(f"🧪 Test inference results:")
+            for i, output in enumerate(outputs):
+                print(f"   Output {i} shape: {output.shape}")
+                print(f"   Output {i} data type: {output.dtype}")
+                print(f"   Output {i} value range: [{np.min(output):.6f}, {np.max(output):.6f}]")
+                if np.any(np.isnan(output)):
+                    print(f"   ⚠️  Output {i} contains NaN values!")
+                else:
+                    print(f"   ✅ Output {i} contains valid values")
+            
+            return output_path
+        else:
+            print(f"❌ Failed to export model")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Failed to export model to ONNX: {str(e)}")
+        raise
+
+
+def main():
+    """Main function to run the segmentation detection with batch processing."""
+    # Configuration - use available model
+    MODEL_PATH = "../YoloModel/yolov8m_SegmentationDetection_dynamic.pt"
+    OUTPUT_DIR = "output"
+    
+    # Default test image (you can change this)
+    DEFAULT_IMAGE = "../Dataset/input_SegmentationDetection/TestImage.png"
+    
+    print("=== YOLO Segmentation Detection with Batch Processing ===")
+    
+    # Check if model exists, try alternative paths
+    model_paths = [
+        MODEL_PATH,
+        "YoloModel/yolov8n_player_seg_20250208.pt",
+        "../YoloModel/yolov8m_SegmentationDetection_dynamic.pt"
+    ]
+    
+    actual_model_path = None
+    for path in model_paths:
+        if os.path.exists(path):
+            actual_model_path = path
+            print(f"✅ Found model: {path}")
+            break
+    
+    if actual_model_path is None:
+        print(f"❌ No model found in any of these paths:")
+        for path in model_paths:
+            print(f"   - {path}")
+        print("Please provide a valid model path.")
+        return 1
+    
+    # Initialize detector
+    try:
+        detector = YOLOSegmentationDetector(actual_model_path, OUTPUT_DIR)
+        
+        # Check if test image exists
+        if not os.path.exists(DEFAULT_IMAGE):
+            print(f"\n⚠️  Test image not found: {DEFAULT_IMAGE}")
+            # Try alternative paths
+            alternative_images = [
+                "Dataset/input_SegmentDetection/TestImage.png", 
+                "../Dataset/input_SegmentDetection/TestImage.png",
+                "TestImage.png"
+            ]
+            
+            test_image_found = False
+            for alt_image in alternative_images:
+                if os.path.exists(alt_image):
+                    DEFAULT_IMAGE = alt_image
+                    test_image_found = True
+                    print(f"✅ Found alternative test image: {alt_image}")
+                    break
+            
+            if not test_image_found:
+                print("❌ No test image found. Skipping batch processing demo.")
+                return 1
+        
+        print(f"\n🚀 Starting YOLO native batch processing with 50 images...")
+        print(f"Using test image: {DEFAULT_IMAGE}")
+        
+        # Create list of 50 test images (same image repeated)
+        test_image_list = detector.create_test_image_list(DEFAULT_IMAGE, count=50)
+        
+        # Configure batch processing parameters
+        BATCH_SIZE = 1  # Optimal batch size for most GPUs
+        print(f"🔧 Batch processing configuration:")
+        print(f"   Total images: 50")
+        print(f"   Batch size: {BATCH_SIZE}")
+        print(f"   Number of batches: {(50 + BATCH_SIZE - 1) // BATCH_SIZE}")
+        print(f"   Using YOLO's native batch processing for maximum efficiency")
+        
+        # Process batch with YOLO's native batch processing
+        batch_results = detector.process_batch_images_native(
+            image_paths=test_image_list,
+            conf=0.25,
+            batch_size=BATCH_SIZE
+        )
+        
+        # Save batch summary to CSV
+        try:
+            import pandas as pd
+            
+            # Create detailed results DataFrame
+            results_data = []
+            for i, result in enumerate(batch_results['individual_results']):
+                results_data.append({
+                    'image_number': i + 1,
+                    'image_name': result['image_name'],
+                    'batch_number': result['batch_number'],
+                    'image_in_batch': result['image_in_batch'],
+                    'detections_found': result['detection_count'],
+                    'timestamp': result['timestamp'],
+                    'masked_image_path': result['masked_image_path'],
+                    'csv_path': result['csv_path']
+                })
+            
+            df = pd.DataFrame(results_data)
+            summary_csv_path = os.path.join(OUTPUT_DIR, "batch_processing_summary.csv")
+            df.to_csv(summary_csv_path, index=False)
+            print(f"\n💾 Batch summary saved to: {summary_csv_path}")
+            
+            # Create timing statistics CSV
+            timing_stats = {
+                'metric': [
+                    'Total Images',
+                    'Successfully Processed',
+                    'Failed Images', 
+                    'Total Detections',
+                    'Batch Size Used',
+                    'Number of Batches',
+                    'Total Processing Time (s)',
+                    'Overall FPS',
+                    'Average Batch FPS',
+                    'Throughput (images/min)',
+                    'Min Batch Time (s)',
+                    'Max Batch Time (s)',
+                    'Median Batch Time (s)',
+                    'Average Batch Time (s)'
+                ],
+                'value': [
+                    batch_results['total_images'],
+                    batch_results['processed_images'],
+                    len(batch_results['failed_images']),
+                    batch_results['total_detections'],
+                    BATCH_SIZE,
+                    len(batch_results['timing_metrics']['batch_times']),
+                    batch_results['timing_metrics']['total_time'],
+                    batch_results['timing_metrics']['total_fps'],
+                    batch_results['timing_metrics']['batch_fps'],
+                    batch_results['processed_images'] * 60.0 / batch_results['timing_metrics']['total_time'],
+                    min(batch_results['timing_metrics']['batch_times']) if batch_results['timing_metrics']['batch_times'] else 0,
+                    max(batch_results['timing_metrics']['batch_times']) if batch_results['timing_metrics']['batch_times'] else 0,
+                    pd.Series(batch_results['timing_metrics']['batch_times']).median() if batch_results['timing_metrics']['batch_times'] else 0,
+                    pd.Series(batch_results['timing_metrics']['batch_times']).mean() if batch_results['timing_metrics']['batch_times'] else 0
+                ]
+            }
+            
+            timing_df = pd.DataFrame(timing_stats)
+            timing_csv_path = os.path.join(OUTPUT_DIR, "batch_timing_statistics.csv")
+            timing_df.to_csv(timing_csv_path, index=False)
+            print(f"💾 Timing statistics saved to: {timing_csv_path}")
+            
+        except Exception as e:
+            print(f"⚠️  Could not save batch summary to CSV: {str(e)}")
+        
+        print("\n" + "="*80)
+        print("🎉 BATCH PROCESSING DEMO COMPLETE!")
+        print("="*80)
+        print(f"✅ Successfully processed {batch_results['processed_images']} out of {batch_results['total_images']} images")
+        print(f"⚡ Overall performance: {batch_results['timing_metrics']['total_fps']:.2f} FPS")
+        print(f"🔍 Total detections found: {batch_results['total_detections']}")
+        print(f"⏱️  Total time: {batch_results['timing_metrics']['total_time']:.2f} seconds")
+        print(f"📈 Throughput: {batch_results['processed_images'] * 60.0 / batch_results['timing_metrics']['total_time']:.1f} images/minute")
+        print("="*80)
+            
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return 1
+    
+    return 0
+
+
+if __name__ == "__main__":
+    main()

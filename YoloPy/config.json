@@ -1,0 +1,32 @@
+{
+  "yolo_config": {
+    "detection_thresholds": {
+      "confidence_threshold": 0.25,
+      "score_threshold": 0.25,
+      "nms_threshold": 0.45
+    },
+    "input_dimensions": {
+      "width": 1280,
+      "height": 1280
+    },
+    "model_settings": {
+      "default_model_name": "yolov8n.pt",
+      "onnx_model_name": "yolov8n.onnx"
+    },
+    "paths": {
+      "input_dir": "YoloPy/input",
+      "output_dir": "output",
+      "model_dir": "YoloModel"
+    },
+    "processing": {
+      "save_csv": true,
+      "save_visualizations": true,
+      "verbose_logging": true
+    },
+    "batch_processing": {
+      "batch_size": 50,
+      "max_test_images": 50,
+      "execution_provider": "cuda"
+    }
+  }
+} 

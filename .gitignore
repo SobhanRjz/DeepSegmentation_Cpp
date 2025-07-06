@@ -1,0 +1,420 @@
+# YOLO C++ Project .gitignore
+
+# =============================================================================
+# Build Artifacts
+# =============================================================================
+
+# CMake build directories - keep debug/release folders but exclude contents
+build/*
+!build/debug/
+!build/release/
+build/debug/*
+build/release/*
+Build/
+BUILD/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Compiled Object files
+*.o
+*.obj
+*.lo
+*.slo
+*.ko
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+main
+yolo_detector
+yolo_tests
+
+# =============================================================================
+# IDE and Editor Files
+# =============================================================================
+
+# Cursor IDE
+.cursor/
+.cursor/*
+
+# Visual Studio Code - keep folder but exclude some files
+*.code-workspace
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# CLion
+.idea/
+cmake-build-*/
+
+# Qt Creator
+CMakeLists.txt.user
+CMakeLists.txt.user.*
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+
+# Eclipse CDT
+.cproject
+.project
+.settings/
+
+# Code::Blocks
+*.cbp
+*.layout
+*.depend
+
+# Dev-C++
+*.dev
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# IDE Cache directories
+.cache/
+.clangd/
+
+# =============================================================================
+# Operating System Files
+# =============================================================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# Project Specific Files
+# =============================================================================
+
+# YOLO Model Files (usually large, should be downloaded separately)
+*.onnx
+*.pt
+*.weights
+*.cfg
+
+# Input/Output directories
+
+results/
+detections/
+test_output/
+test_input/
+test_utils_temp/
+
+# CSV output files
+*.csv
+output_*.csv
+*_detections.csv
+
+# Image and video files (test data)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.tif
+*.gif
+*.webp
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+
+# Except for specific test images that should be tracked
+!tests/data/*.jpg
+!tests/data/*.png
+!docs/images/*.jpg
+!docs/images/*.png
+
+# =============================================================================
+# Logs and Temporary Files
+# =============================================================================
+
+# Log files
+*.log
+logs/
+*.out
+*.err
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+
+# Core dumps
+core
+core.*
+*.core
+
+# =============================================================================
+# Documentation and Reports
+# =============================================================================
+
+# Generated documentation
+docs/html/
+docs/latex/
+docs/xml/
+doxygen_warnings.txt
+
+# Test reports
+test_results.xml
+test_report.html
+coverage_report/
+*.gcov
+*.gcda
+*.gcno
+
+# =============================================================================
+# Package Managers and Dependencies
+# =============================================================================
+
+# Conan
+conandata.yml
+conanfile.txt
+conaninfo.txt
+conanbuildinfo.*
+conan.lock
+
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# Hunter
+_builds/
+
+# =============================================================================
+# Python (for comparison scripts)
+# =============================================================================
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# =============================================================================
+# Profiling and Debugging
+# =============================================================================
+
+# Valgrind
+*.valgrind
+vgcore.*
+
+# GDB
+.gdb_history
+
+# Profiling data
+*.prof
+*.gprof
+perf.data*
+callgrind.out.*
+
+# AddressSanitizer
+*.asan
+
+# =============================================================================
+# Archive and Compressed Files
+# =============================================================================
+
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# =============================================================================
+# Custom Project Exclusions
+# =============================================================================
+
+# Configuration files with sensitive data
+config/secrets.txt
+config/api_keys.txt
+*.secret
+
+# Large datasets
+datasets/
+data/large/
+*.dataset
+
+# Benchmark results
+benchmarks/results/
+performance_*.txt
+
+# Third-party libraries (if included locally)
+third_party/
+external/
+vendor/
+
+!output/output_cpp.csv
+!output/output_py.csv
+!output/detections_cpp.jpg
+!output/detections_py.jpg
+libs/libtorch-cxx11-abi-shared-with-deps-2.7.1+cu126
+build_custom
+libs/libtorch-cxx11-abi-shared-with-deps-2.6.0+cu124
+*libs/*
+# =============================================================================
+# Comments and Notes
+# =============================================================================
+
+# This .gitignore is designed for a YOLO C++ project with the following structure:
+# 
+# Project/
+# ├── src/                 # Source files
+# ├── include/             # Header files  
+# ├── tests/               # Unit tests
+# ├── libs/                # External libraries (ONNX Runtime)
+# ├── YoloModel/           # YOLO model files (ignored)
+# ├── YoloPy/              # Python comparison implementation
+# ├── build/               # Build directory (keep debug/release folders)
+# ├── output/              # Output directory (ignored)
+# └── CMakeLists.txt       # Build configuration
+#
+# Key considerations:
+# - Model files (*.onnx, *.pt) are ignored as they're typically large
+# - Build artifacts are ignored but debug/release folders are kept
+# - .vscode/ folder is kept for launch.json and tasks.json
+# - Cursor rules and cache directories are ignored
+# - Test outputs and logs are ignored
+#
+# To track a specific ignored file, use: git add -f <filename>
+# To check what files are being ignored: git status --ignored 

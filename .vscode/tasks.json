@@ -1,0 +1,214 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Segmentation Batch (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make segmentation_batch -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build segmentation batch processor in debug mode with symbols"
+        },
+        {
+            "label": "Build Segmentation Batch (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE='-O3 -march=native -mtune=native -ffast-math -funroll-loops -fomit-frame-pointer -DNDEBUG' -DCMAKE_C_FLAGS='-O3 -march=native -fopenmp' -DCMAKE_CXX_FLAGS='-O3 -march=native -fopenmp' -DCMAKE_C_FLAGS_RELEASE='-O3 -march=native -fopenmp' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -march=native -fopenmp' -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DCMAKE_CXX_FLAGS='-O3 -march=native -fopenmp' -DCMAKE_C_FLAGS='-O3 -march=native -fopenmp' -DCMAKE_CXX_FLAGS_RELEASE='-O3 -march=native -fopenmp' -DCMAKE_CXX_FLAGS='-O3 -march=native -fopenmp' -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON ../.. && make segmentation_batch -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build segmentation batch processor in release mode (optimized)"
+        },
+        {
+            "label": "Run Segmentation Batch (Safe)",
+            "type": "shell",
+            "command": "export CUDA_LAUNCH_BLOCKING=1 && export PYTORCH_CUDA_ALLOC_CONF='max_split_size_mb:256' && build/release/segmentation_batch CUDA 1 0.25",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "dependsOn": "Build Segmentation Batch (Release)",
+            "detail": "Run segmentation batch with PyTorch 2.8.0a0 CUDA stream safety settings"
+        },
+        {
+            "label": "Build Point Batch Processor (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make point_batch -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build point batch processor in debug mode with symbols"
+        },
+        {
+            "label": "Build Point Batch Processor (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make point_batch -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build point batch processor in release mode (optimized)"
+        },
+        {
+            "label": "Build Unified Batch Processor (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make unified_batch_processor -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build unified batch processor in debug mode with symbols"
+        },
+        {
+            "label": "Build Unified Batch Processor (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make unified_batch_processor -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build unified batch processor in release mode (optimized)"
+        },
+        {
+            "label": "Build Test OpenCV (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make test_opencv -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build OpenCV test utility in release mode (optimized)"
+        },
+        {
+            "label": "Build All Utilities (Debug)",
+            "type": "shell",
+            "command": "mkdir -p build/debug && cd build/debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build all executables (segmentation_batch, point_batch, unified_batch_processor, test_opencv) in debug mode"
+        },
+        {
+            "label": "Build All Utilities (Release)",
+            "type": "shell",
+            "command": "mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build all executables (segmentation_batch, point_batch, unified_batch_processor, test_opencv) in release mode"
+        },
+        {
+            "label": "Build Tests (Debug)",
+            "type": "shell",
+            "command": "cd tests && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS='-g -O0' .. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build YOLO tests in debug mode with symbols and no optimization"
+        },
+        {
+            "label": "Build Tests (Release)",
+            "type": "shell",
+            "command": "cd tests && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j$(nproc)",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Build YOLO tests in release mode (optimized)"
+        },
+        {
+            "label": "Clean All Builds",
+            "type": "shell",
+            "command": "rm -rf build/debug build/release tests/build",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "detail": "Clean all build directories (debug, release, and tests)"
+        },
+        {
+            "label": "Run CSV Comparison Test",
+            "type": "shell",
+            "command": "cd tests/build && ./yolo_tests --gtest_filter=CSVComparisonTest.*",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "dependsOn": "Build Tests (Debug)",
+            "detail": "Run only the CSV comparison tests"
+        },
+        {
+            "label": "Run All Tests",
+            "type": "shell",
+            "command": "cd tests/build && ./yolo_tests",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "dependsOn": "Build Tests (Debug)",
+            "detail": "Build and run all YOLO tests"
+        }
+    ]
+}  
