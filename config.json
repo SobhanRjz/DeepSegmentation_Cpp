@@ -10,23 +10,70 @@
       "height": 1280
     },
     "model_settings": {
-      "default_model_name": "yolov8n.pt",
-      "onnx_model_name": "yolov8n.onnx"
+      "default_model_name": "yolov8m_SegmentationDetection_dynamic.pt",
+      "onnx_model_name": "yolov8m_SegmentationDetection_dynamic.onnx"
     },
     "paths": {
-      "input_dir": "YoloPy/input",
+      "input_dir": "Dataset/input_SegmentDetection",
       "output_dir": "output",
       "model_dir": "YoloModel"
     },
     "processing": {
       "save_csv": true,
       "save_visualizations": true,
-      "verbose_logging": true
+      "verbose_logging": false
     },
     "batch_processing": {
-      "batch_size": 50,
+      "batch_size": 16,
       "max_test_images": 50,
       "execution_provider": "cuda"
+    },
+    "hardware_config": {
+      "gpu_model": "AUTO_DETECT",
+      "vram_gb": 16,
+      "cuda_version": "12.0+",
+      "pytorch_version": "2.0+",
+      "optimal_batch_size": 16,
+      "max_batch_size": 32,
+      "memory_limit_mb": 14000
+    },
+    "performance_settings": {
+      "enable_mixed_precision": true,
+      "use_tensorrt": false,
+      "async_processing": true,
+      "memory_pooling": true,
+      "gpu_preprocessing": true
+    },
+    "gpu_recommendations": {
+      "comment": "Adjust batch_size and memory_limit_mb based on your GPU VRAM",
+      "vram_4gb": {
+        "batch_size": 4,
+        "memory_limit_mb": 3000
+      },
+      "vram_6gb": {
+        "batch_size": 6,
+        "memory_limit_mb": 5000
+      },
+      "vram_8gb": {
+        "batch_size": 8,
+        "memory_limit_mb": 6500
+      },
+      "vram_10gb": {
+        "batch_size": 10,
+        "memory_limit_mb": 8500
+      },
+      "vram_12gb": {
+        "batch_size": 12,
+        "memory_limit_mb": 10000
+      },
+      "vram_16gb": {
+        "batch_size": 16,
+        "memory_limit_mb": 14000
+      },
+      "vram_24gb": {
+        "batch_size": 24,
+        "memory_limit_mb": 22000
+      }
     }
   }
 } 
