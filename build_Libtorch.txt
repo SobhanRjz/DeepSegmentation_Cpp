@@ -1,0 +1,85 @@
+# Install essential build tools and dependencies (adjust Python version if needed)
+sudo apt update
+sudo apt install -y git cmake build-essential gcc-11 g++-11 python3 python3-pip \
+    libopenblas-dev libssl-dev libffi-dev libtool autoconf automake m4 \
+    pkg-config zlib1g-dev libgoogle-glog-dev libgflags-dev \
+    libprotobuf-dev protobuf-compiler \
+    libopencv-dev python3-setuptools
+
+# Install required Python packages for codegen
+pip3 -r requirement.txt
+
+
+
+Install CUDA 12.4 and cuDNN for CUDA 12.x (already done in your case).
+
+Ensure /usr/local/cuda-12.4 exists and is in your PATH.
+
+
+# Add NVIDIA repository (if not done)
+sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub
+sudo apt update
+
+# Install the correct version (replace version if needed)
+sudo apt install -y libnccl2=2.27.3-1+cuda12.4 libnccl-dev=2.27.3-1+cuda12.4
+
+# Or, to show all available versions (if you need to pick another)
+apt-cache madison libnccl2
+
+
+
+# Clone PyTorch (change tag/branch as needed)
+git clone --recursive https://github.com/pytorch/pytorch.git
+cd pytorch
+# If already cloned without --recursive, do:
+git submodule sync
+git submodule update --init --recursive
+
+
+mkdir -p ~/DeepNetC++/libs/pytorch/build
+cd ~/DeepNetC++/libs/pytorch/build
+
+cmake   
+	-DCMAKE_BUILD_TYPE=Release
+	-DCMAKE_INSTALL_PREFIX=/home/rajabzade/DeepNetC++/build/install
+	-DCMAKE_C_COMPILER=/usr/bin/gcc-11
+	-DCMAKE_CXX_COMPILER=/usr/bin/g++-11
+	-DBUILD_SHARED_LIBS=ON
+	-DUSE_CUDA=ON
+	-DUSE_SYSTEM_NCCL=ON
+	-DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-12.4
+	-DTORCH_CUDA_ARCH_LIST="8.6;8.9"   ..
+
+make -j$(nproc)
+make install
+
+
+
+
+
+cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/home/rajabzade/DeepNetC++/build/install \
+  -DCMAKE_C_COMPILER=/usr/bin/gcc-11 \
+  -DCMAKE_CXX_COMPILER=/usr/bin/g++-11 \
+  -DBUILD_SHARED_LIBS=ON \
+  -DUSE_CUDA=ON \
+  -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-12.4 \
+  -DTORCH_CUDA_ARCH_LIST="8.9" \        # <-- only your GPU
+  -DCMAKE_CUDA_ARCHITECTURES=89 \        # same thing, CMake-style
+  -DUSE_SYSTEM_NCCL=ON \                 # keep if you’ll ever do multi-GPU
+  -DBUILD_TEST=OFF \                     # skip unit tests
+  -DBUILD_BENCHMARK=OFF \                # skip benchmarks
+  -DBUILD_PYTHON=OFF \                   # pure-C++ build (no wheels)
+  -DUSE_DISTRIBUTED=OFF \                # cut out ProcessGroup/TensorPipe
+  -DUSE_TENSORPIPE=OFF \                 # more distributed plumbing
+  -DBUILD_CAFFE2_OPS=OFF \               # legacy ops not needed for LibTorch
+  -DUSE_XNNPACK=OFF -DUSE_QNNPACK=OFF \  # mobile/quantization CPU paths
+  -DUSE_NNPACK=OFF \                     # same
+  -DUSE_PYTORCH_QNNPACK=OFF \
+  -DUSE_MKLDNN=OFF \                     # skip heavy oneDNN if you live on GPU
+  -DUSE_FBGEMM=ON \                      # small, helpful for CPU fallback GEMM
+  ..
+  
+  
+  
