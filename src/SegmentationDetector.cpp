@@ -342,7 +342,7 @@ std::vector<float> SegmentationDetector::preprocess(const cv::Mat& image, cv::Re
     // Apply padding with EXACT Ultralytics method
     cv::copyMakeBorder(img, img, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
     
-    // Store original padding values for debug
+    // Store original padding values for coordinate transformation
     int original_top = top;
     int original_left = left;
     
@@ -371,14 +371,11 @@ std::vector<float> SegmentationDetector::preprocess(const cv::Mat& image, cv::Re
         top += additional_top;
     }
     
-    std::cout << "=== FINAL PADDING SUMMARY ===" << "\n";
-    std::cout << "  Final image size: " << img.cols << "x" << img.rows << "\n";
-    std::cout << "  Target size: " << new_shape[1] << "x" << new_shape[0] << "\n";
-    std::cout << "  Size match: " << (img.cols == new_shape[1] && img.rows == new_shape[0] ? "YES" : "NO") << "\n";
-    std::cout << "  Final padding offsets: left=" << left << ", top=" << top << "\n";
-    std::cout << "  Scale ratio for inverse: " << std::fixed << std::setprecision(16) << r << "\n";
-    std::cout << "  Matches Python behavior: " << (auto_pad ? "YES (auto=True, variable size)" : "YES (auto=False, fixed size)") << "\n";
-    std::cout << "=================================" << "\n";
+    // Production mode: minimal logging
+    if (config_.verbose_logging) {
+        std::cout << "Final image size: " << img.cols << "x" << img.rows 
+                  << ", padding: left=" << left << ", top=" << top << "\n";
+    }
     
     // Store EXACT scale info for postprocessing - USE DOUBLE PRECISION
     scale_info.x = left;
@@ -393,10 +390,10 @@ std::vector<float> SegmentationDetector::preprocess(const cv::Mat& image, cv::Re
     processed_width_ = img.cols;
     processed_height_ = img.rows;
     
-    // REMOVED: No longer force image to exact target size
     // The dynamic ONNX model can handle variable input sizes like 1280x736
-    std::cout << "✅ Using natural processed size: " << img.cols << "x" << img.rows << "\n";
-    std::cout << "   This matches Ultralytics Python behavior (auto=True)" << "\n";
+    if (config_.verbose_logging) {
+        std::cout << "Using natural processed size: " << img.cols << "x" << img.rows << "\n";
+    }
     
     // Convert BGR to RGB (Ultralytics expects RGB)
     cv::Mat rgb_img;
@@ -415,8 +412,9 @@ std::vector<float> SegmentationDetector::preprocess(const cv::Mat& image, cv::Re
     int input_size = pimgheight * pimgwidth * 3;
     std::vector<float> input_tensor_data(input_size);
     
-    std::cout << "Creating input tensor: " << pimgwidth << "x" << pimgheight << " (size=" << input_size << ")" << "\n";
-    std::cout << "✅ Natural aspect ratio preserved, no forced padding" << "\n";
+    if (config_.verbose_logging) {
+        std::cout << "Creating input tensor: " << pimgwidth << "x" << pimgheight << " (size=" << input_size << ")\n";
+    }
     
     // Fill tensor data in CHW format (channels first)
     for (int c = 0; c < 3; ++c) {
@@ -1311,28 +1309,17 @@ cv::Mat SegmentationDetector::drawSegmentationOverlay(
     const std::vector<SegmentationResult>& detections) {
     
     cv::Mat result = image.clone();
-    cv::Mat bbox_only = image.clone();  // DEBUG: Image with only bounding boxes
-    
-    std::cout << "🎨 Drawing " << detections.size() << " detections" << "\n";
+    if (config_.verbose_logging) {
+        std::cout << "Drawing " << detections.size() << " detections\n";
+    }
     
     for (size_t idx = 0; idx < detections.size(); ++idx) {
         const auto& detection = detections[idx];
         cv::Scalar color = (detection.class_id < class_colors_.size()) ? 
                           class_colors_[detection.class_id] : cv::Scalar(0, 255, 0);
         
-        // Draw bounding box ONLY on bbox_only debug image
-        cv::rectangle(bbox_only, detection.bbox, color, 2);
-        
-        // Draw class label on result image (positioned at top of segmentation area)
+        // Prepare label for this detection
         std::string label = detection.class_name + " " + std::to_string(static_cast<int>(detection.confidence * 100)) + "%";
-        int baseline;
-        cv::Size text_size = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-        cv::Point text_origin(static_cast<int>(detection.bbox.x), static_cast<int>(detection.bbox.y) - 5);
-        
-        // Draw label background and text ONLY on bbox_only debug image
-        cv::rectangle(bbox_only, text_origin + cv::Point(0, baseline), 
-                     text_origin + cv::Point(text_size.width, -text_size.height), color, -1);
-        cv::putText(bbox_only, label, text_origin, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
         
         // ===== SEGMENTATION MASK DRAWING =====
 
